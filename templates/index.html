@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<h1>Список оборудования</h1>
+<form method="get">
+    Категория: <select name="category">...</select>
+    Статус: <select name="status">...</select>
+    Дата покупки: <input type="date" name="date_from"> — <input type="date" name="date_to">
+    <button type="submit">Фильтровать</button>
+</form>
+<table>
+    <thead>
+        <tr>
+            <th>Название</th>
+            <th>Инвентарный номер</th>
+            <th>Категория</th>
+            <th>Статус</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in equipment %}
+        <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.inventory_number }}</td>
+            <td>{{ item.category }}</td>
+            <td>{{ item.status }}</td>
+            <td>
+                <a href="{{ url_for('view_equipment', id=item.id) }}">👁️</a>
+                {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('edit_equipment', id=item.id) }}">✏️</a>
+                    <a href="{{ url_for('delete_equipment', id=item.id) }}">🗑️</a>
+                {% endif %}
+                {% if current_user.role in ['admin', 'tech'] %}
+                    <a href="{{ url_for('add_maintenance', equipment_id=item.id) }}">🛠️</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div class="pagination">
+    {% if pagination.has_prev %}
+        <a href="{{ url_for('index', page=pagination.prev_num) }}">Назад</a>
+    {% endif %}
+    Страница {{ pagination.page }} из {{ pagination.pages }}
+    {% if pagination.has_next %}
+        <a href="{{ url_for('index', page=pagination.next_num) }}">Вперед</a>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<h1>Вход</h1>
+<form method="post">
+    {{ form.hidden_tag() }}
+    {{ form.username.label }} {{ form.username() }}<br>
+    {{ form.password.label }} {{ form.password() }}<br>
+    {{ form.remember.label }} {{ form.remember() }}<br>
+    <button type="submit">Войти</button>
+</form>
+{% if error %}
+    <div class="error">Невозможно аутентифицироваться с указанными логином и паролем</div>
+{% endif %}
+{% endblock %}

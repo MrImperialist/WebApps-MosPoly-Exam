@@ -1,0 +1,141 @@
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f7f7f7;
+    color: #222;
+}
+
+nav {
+    background: #2d3e50;
+    color: #fff;
+    padding: 0.5em 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+}
+nav a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.3em 0.7em;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+nav a:hover {
+    background: #1a2533;
+}
+
+main {
+    flex: 1 0 auto;
+    max-width: 900px;
+    margin: 2em auto 1em auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 2em;
+}
+
+footer {
+    background: #2d3e50;
+    color: #fff;
+    text-align: center;
+    padding: 1em 0;
+    margin-top: auto;
+    font-size: 1em;
+    letter-spacing: 1px;
+}
+
+h1, h2, h3 {
+    color: #2d3e50;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    background: #fafbfc;
+}
+table th, table td {
+    border: 1px solid #e0e0e0;
+    padding: 0.6em 0.8em;
+    text-align: left;
+}
+table th {
+    background: #e9ecef;
+    font-weight: 600;
+}
+
+form {
+    margin: 1em 0;
+}
+input, select, textarea, button {
+    font-size: 1em;
+    padding: 0.4em 0.7em;
+    margin: 0.3em 0;
+    border: 1px solid #bfc9d1;
+    border-radius: 4px;
+    outline: none;
+    box-sizing: border-box;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: #2d3e50;
+}
+button {
+    background: #2d3e50;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-radius: 4px;
+}
+button:hover {
+    background: #1a2533;
+}
+
+.flash {
+    padding: 0.7em 1em;
+    margin-bottom: 1em;
+    border-radius: 4px;
+    font-size: 1em;
+}
+.flash.success { background: #d4edda; color: #155724; }
+.flash.error { background: #f8d7da; color: #721c24; }
+.flash.info { background: #d1ecf1; color: #0c5460; }
+
+.error {
+    color: #c0392b;
+    background: #fbeeea;
+    padding: 0.5em 1em;
+    border-radius: 4px;
+    margin-top: 1em;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1em;
+    margin: 1.5em 0 0 0;
+}
+.pagination a {
+    color: #2d3e50;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.2em 0.7em;
+    border-radius: 4px;
+    background: #e9ecef;
+    transition: background 0.2s;
+}
+.pagination a:hover {
+    background: #bfc9d1;
+} 

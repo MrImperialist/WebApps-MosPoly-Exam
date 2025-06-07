@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Просмотр оборудования{% endblock %}
+{% block content %}
+<h1>{{ equipment.name }}</h1>
+<img src="{{ url_for('static', filename='uploads/' ~ equipment.photo) }}" alt="Фото оборудования" width="200">
+<ul>
+    <li>Инвентарный номер: {{ equipment.inventory_number }}</li>
+    <li>Категория: {{ equipment.category }}</li>
+    <li>Дата покупки: {{ equipment.purchase_date }}</li>
+    <li>Стоимость: {{ equipment.price }}</li>
+    <li>Статус: {{ equipment.status }}</li>
+    <li>Примечание: {{ equipment.note }}</li>
+</ul>
+<h2>История обслуживания</h2>
+<table>
+    <thead>
+        <tr><th>Дата</th><th>Комментарий</th></tr>
+    </thead>
+    <tbody>
+        {% for record in equipment.maintenance %}
+        <tr>
+            <td>{{ record.date }}</td>
+            <td>{{ record.comment }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if current_user.role in ['admin', 'tech'] %}
+<h3>Добавить запись об обслуживании</h3>
+<form method="post" action="{{ url_for('add_maintenance', equipment_id=equipment.id) }}">
+    {{ maintenance_form.hidden_tag() }}
+    {{ maintenance_form.date.label }} {{ maintenance_form.date() }}<br>
+    {{ maintenance_form.comment.label }} {{ maintenance_form.comment() }}<br>
+    <button type="submit">Добавить</button>
+</form>
+{% endif %}
+{% endblock %}

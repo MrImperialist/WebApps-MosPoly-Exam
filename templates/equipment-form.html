@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block content %}
+<h1>{{ form_title }}</h1>
+<form method="post" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    {{ form.name.label }} {{ form.name() }}<br>
+    {{ form.inventory_number.label }} {{ form.inventory_number() }}<br>
+    {{ form.category.label }} {{ form.category() }}<br>
+    {{ form.purchase_date.label }} {{ form.purchase_date() }}<br>
+    {{ form.price.label }} {{ form.price() }}<br>
+    {{ form.status.label }} {{ form.status() }}<br>
+    {{ form.note.label }} {{ form.note() }}<br>
+    {% if form.photo %}
+        {{ form.photo.label }} {{ form.photo() }}<br>
+    {% endif %}
+    <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

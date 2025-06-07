@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Учет офисного оборудования{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('index') }}">Главная</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('equipment_list_view') }}">Оборудование</a></li>
+                {% if current_user.role in ['admin', 'tech'] %}
+                    <li><a href="{{ url_for('maintenance_list') }}">Обслуживание</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('logout') }}">Выход</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login') }}">Вход</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        Сучков Семён 231-3212
+    </footer>
+</body>
+</html>
