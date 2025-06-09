@@ -4,36 +4,31 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
+from flask_sqlalchemy import SQLAlchemy
+from models import db, Equipment, Category, ResponsiblePerson, EquipmentPhoto
+from flask_migrate import Migrate
+from sqlalchemy import and_
 
 app = Flask(__name__)
 app.secret_key = 'devkey'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:wSpkzSsdTTfQIQROZqrdPjt0ZHGbt08D@dpg-d13hqi49c44c739c6h70-a.frankfurt-postgres.render.com/exam_6vhb'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- Модели ---
-class User(UserMixin):
-    def __init__(self, id, username, password, role):
-        self.id = id
-        self.username = username
-        self.password_hash = generate_password_hash(password)
-        self.role = role
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+users = {}
 
-# Фиктивные пользователи
-users = {
-    'admin': User(1, 'admin', 'admin', 'admin'),
-    'tech': User(2, 'tech', 'tech', 'tech'),
-    'user': User(3, 'user', 'user', 'user'),
-}
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    flash('Для выполнения данного действия необходимо пройти процедуру аутентификации', 'error')
+    return redirect(url_for('login'))
 
 @login_manager.user_loader
 def load_user(user_id):
-    for user in users.values():
-        if str(user.id) == str(user_id):
-            return user
-    return None
+    return None  # Заглушка, пока не реализована модель User через БД
 
 # --- Формы ---
 class LoginForm(FlaskForm):
@@ -42,31 +37,51 @@ class LoginForm(FlaskForm):
     remember = BooleanField('Запомнить меня')
     submit = SubmitField('Войти')
 
-# --- Фиктивные данные оборудования ---
-equipment_list = [
-    {'id': 1, 'name': 'Принтер', 'inventory_number': '1001', 'category': 'Печать', 'status': 'Работает'},
-    {'id': 2, 'name': 'Сканер', 'inventory_number': '1002', 'category': 'Сканирование', 'status': 'Не работает'},
-]
-
 # --- Маршруты ---
 @app.route('/')
 def index():
-    class Dummy:
-        role = getattr(current_user, 'role', None)
-    # Заглушка
-    return render_template('index.html', equipment=equipment_list, pagination={'has_prev': False, 'has_next': False, 'page': 1, 'pages': 1}, current_user=current_user if current_user.is_authenticated else Dummy())
+    page = request.args.get('page', 1, type=int)
+    category_id = request.args.get('category', type=int)
+    status = request.args.get('status')
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    sort = request.args.get('sort', 'purchase_date')
+    order = request.args.get('order', 'desc')
+
+    query = Equipment.query
+    if category_id:
+        query = query.filter(Equipment.category_id == category_id)
+    if status:
+        query = query.filter(Equipment.status == status)
+    if date_from:
+        query = query.filter(Equipment.purchase_date >= date_from)
+    if date_to:
+        query = query.filter(Equipment.purchase_date <= date_to)
+    if sort == 'purchase_date':
+        if order == 'desc':
+            query = query.order_by(Equipment.purchase_date.desc())
+        else:
+            query = query.order_by(Equipment.purchase_date.asc())
+    else:
+        query = query.order_by(Equipment.purchase_date.desc())
+
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    equipment = pagination.items
+    categories = Category.query.all()
+    statuses = [choice for choice in Equipment.status.type.enums]
+    return render_template('index.html', equipment=equipment, pagination=pagination, categories=categories, statuses=statuses, current_user=current_user)
 
 @app.route('/equipment')
 @login_required
 def equipment_list_view():
     class Dummy:
         role = getattr(current_user, 'role', None)
-    return render_template('index.html', equipment=equipment_list, pagination={'has_prev': False, 'has_next': False, 'page': 1, 'pages': 1}, current_user=current_user)
+    return render_template('index.html', equipment=Equipment.query.all(), pagination={'has_prev': False, 'has_next': False, 'page': 1, 'pages': 1}, current_user=current_user)
 
 @app.route('/equipment/<int:id>')
 @login_required
 def view_equipment(id):
-    eq = next((e for e in equipment_list if e['id'] == id), None)
+    eq = Equipment.query.get(id)
     if not eq:
         flash('Оборудование не найдено', 'error')
         return redirect(url_for('index'))
@@ -74,7 +89,7 @@ def view_equipment(id):
         hidden_tag = lambda self: ''
         date = type('F', (), {'label': 'Дата', '__call__': lambda s: '<input>'})()
         comment = type('F', (), {'label': 'Комментарий', '__call__': lambda s: '<input>'})()
-    eq['maintenance'] = []
+    eq.maintenance = []
     return render_template('view-equipment.html', equipment=eq, maintenance_form=DummyForm(), current_user=current_user)
 
 @app.route('/equipment/<int:id>/edit')
@@ -83,10 +98,20 @@ def edit_equipment(id):
     flash('Редактирование пока не реализовано', 'info')
     return redirect(url_for('view_equipment', id=id))
 
-@app.route('/equipment/<int:id>/delete')
+@app.route('/equipment/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_equipment(id):
-    flash('Удаление пока не реализовано', 'info')
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        flash('У вас недостаточно прав для выполнения данного действия', 'error')
+        return redirect(url_for('index'))
+    eq = Equipment.query.get_or_404(id)
+    # Удаление связанных фото и файлов
+    for photo in eq.photos:
+        # Здесь добавить удаление файла из файловой системы, если реализовано
+        db.session.delete(photo)
+    db.session.delete(eq)
+    db.session.commit()
+    flash('Оборудование успешно удалено', 'success')
     return redirect(url_for('index'))
 
 @app.route('/equipment/<int:equipment_id>/maintenance', methods=['POST'])

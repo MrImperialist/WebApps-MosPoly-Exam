@@ -2,10 +2,22 @@
 {% block title %}Главная{% endblock %}
 {% block content %}
 <h1>Список оборудования</h1>
-<form method="get">
-    Категория: <select name="category">...</select>
-    Статус: <select name="status">...</select>
-    Дата покупки: <input type="date" name="date_from"> — <input type="date" name="date_to">
+<form method="get" class="filters">
+    Категория:
+    <select name="category">
+        <option value="">Все</option>
+        {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if request.args.get('category', type=int) == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+    </select>
+    Статус:
+    <select name="status">
+        <option value="">Все</option>
+        {% for s in statuses %}
+            <option value="{{ s }}" {% if request.args.get('status') == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+    </select>
+    Дата покупки: <input type="date" name="date_from" value="{{ request.args.get('date_from', '') }}"> — <input type="date" name="date_to" value="{{ request.args.get('date_to', '') }}">
     <button type="submit">Фильтровать</button>
 </form>
 <table>
@@ -14,6 +26,9 @@
             <th>Название</th>
             <th>Инвентарный номер</th>
             <th>Категория</th>
+            <th>
+                <a href="{{ url_for('index', sort='purchase_date', order='asc' if request.args.get('order') == 'desc' else 'desc', **request.args.to_dict(flat=True)) }}">Дата покупки</a>
+            </th>
             <th>Статус</th>
             <th>Действия</th>
         </tr>
@@ -23,15 +38,16 @@
         <tr>
             <td>{{ item.name }}</td>
             <td>{{ item.inventory_number }}</td>
-            <td>{{ item.category }}</td>
+            <td>{{ item.category.name }}</td>
+            <td>{{ item.purchase_date }}</td>
             <td>{{ item.status }}</td>
             <td>
                 <a href="{{ url_for('view_equipment', id=item.id) }}">👁️</a>
-                {% if current_user.role == 'admin' %}
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <a href="#" class="delete-btn" data-id="{{ item.id }}" data-name="{{ item.name }}">🗑️</a>
                     <a href="{{ url_for('edit_equipment', id=item.id) }}">✏️</a>
-                    <a href="{{ url_for('delete_equipment', id=item.id) }}">🗑️</a>
                 {% endif %}
-                {% if current_user.role in ['admin', 'tech'] %}
+                {% if current_user.is_authenticated and current_user.role in ['admin', 'tech'] %}
                     <a href="{{ url_for('add_maintenance', equipment_id=item.id) }}">🛠️</a>
                 {% endif %}
             </td>
@@ -41,11 +57,34 @@
 </table>
 <div class="pagination">
     {% if pagination.has_prev %}
-        <a href="{{ url_for('index', page=pagination.prev_num) }}">Назад</a>
+        <a href="{{ url_for('index', page=pagination.prev_num, **request.args.to_dict(flat=True)) }}">Назад</a>
     {% endif %}
     Страница {{ pagination.page }} из {{ pagination.pages }}
     {% if pagination.has_next %}
-        <a href="{{ url_for('index', page=pagination.next_num) }}">Вперед</a>
+        <a href="{{ url_for('index', page=pagination.next_num, **request.args.to_dict(flat=True)) }}">Вперед</a>
     {% endif %}
 </div>
+<!-- Модальное окно для удаления -->
+<div id="deleteModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+  <div style="background:#fff; padding:20px; border-radius:8px; min-width:300px;">
+    <h2>Удаление оборудования</h2>
+    <p id="deleteMessage"></p>
+    <form id="deleteForm" method="post">
+      <button type="submit">Да</button>
+      <button type="button" onclick="document.getElementById('deleteModal').style.display='none'">Нет</button>
+    </form>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const id = this.dataset.id;
+      const name = this.dataset.name;
+      document.getElementById('deleteMessage').textContent = `Вы уверены, что хотите удалить оборудование "${name}"?`;
+      document.getElementById('deleteForm').action = `/equipment/${id}/delete`;
+      document.getElementById('deleteModal').style.display = 'flex';
+    });
+  });
+</script>
 {% endblock %}

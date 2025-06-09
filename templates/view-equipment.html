@@ -2,24 +2,26 @@
 {% block title %}Просмотр оборудования{% endblock %}
 {% block content %}
 <h1>{{ equipment.name }}</h1>
-<img src="{{ url_for('static', filename='uploads/' ~ equipment.photo) }}" alt="Фото оборудования" width="200">
+{% if equipment.photos and equipment.photos|length > 0 %}
+    <img src="{{ url_for('static', filename='uploads/' ~ equipment.photos[0].filename) }}" alt="Фото оборудования" width="200">
+{% endif %}
 <ul>
     <li>Инвентарный номер: {{ equipment.inventory_number }}</li>
-    <li>Категория: {{ equipment.category }}</li>
+    <li>Категория: {{ equipment.category.name }}</li>
     <li>Дата покупки: {{ equipment.purchase_date }}</li>
-    <li>Стоимость: {{ equipment.price }}</li>
+    <li>Стоимость: {{ equipment.cost }}</li>
     <li>Статус: {{ equipment.status }}</li>
-    <li>Примечание: {{ equipment.note }}</li>
 </ul>
 <h2>История обслуживания</h2>
 <table>
     <thead>
-        <tr><th>Дата</th><th>Комментарий</th></tr>
+        <tr><th>Дата</th><th>Тип обслуживания</th><th>Комментарий</th></tr>
     </thead>
     <tbody>
-        {% for record in equipment.maintenance %}
+        {% for record in equipment.maintenance_history %}
         <tr>
             <td>{{ record.date }}</td>
+            <td>{{ record.maintenance_type }}</td>
             <td>{{ record.comment }}</td>
         </tr>
         {% endfor %}
