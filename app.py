@@ -5,7 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
-from models import db, Equipment, Category, ResponsiblePerson, EquipmentPhoto
+from models import db, Equipment, Category, ResponsiblePerson, EquipmentPhoto, User
 from flask_migrate import Migrate
 from sqlalchemy import and_
 
@@ -28,7 +28,7 @@ def unauthorized_callback():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return None  # Заглушка, пока не реализована модель User через БД
+    return User.query.get(int(user_id))
 
 # --- Формы ---
 class LoginForm(FlaskForm):
@@ -107,7 +107,6 @@ def delete_equipment(id):
     eq = Equipment.query.get_or_404(id)
     # Удаление связанных фото и файлов
     for photo in eq.photos:
-        # Здесь добавить удаление файла из файловой системы, если реализовано
         db.session.delete(photo)
     db.session.delete(eq)
     db.session.commit()
@@ -131,7 +130,7 @@ def login():
     form = LoginForm()
     error = None
     if form.validate_on_submit():
-        user = users.get(form.username.data)
+        user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user, remember=form.remember.data)
             flash('Вы успешно вошли', 'success')
