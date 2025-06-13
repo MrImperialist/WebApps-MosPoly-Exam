@@ -2,6 +2,11 @@
 {% block title %}Главная{% endblock %}
 {% block content %}
 <h1>Список оборудования</h1>
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+<div class="actions-bar">
+    <a href="{{ url_for('add_equipment') }}" class="btn btn-primary">Добавить оборудование</a>
+</div>
+{% endif %}
 <form method="get" class="filters">
     Категория:
     <select name="category">

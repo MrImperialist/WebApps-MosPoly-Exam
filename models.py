@@ -23,6 +23,11 @@ equipment_responsible = db.Table('equipment_responsible',
     db.Column('responsible_id', db.Integer, db.ForeignKey('responsible_person.id'), primary_key=True)
 )
 
+equipment_photos_association = db.Table('equipment_photos_association',
+    db.Column('equipment_id', db.Integer, db.ForeignKey('equipment.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('photo_id', db.Integer, db.ForeignKey('equipment_photo.id', ondelete="CASCADE"), primary_key=True)
+)
+
 class Equipment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
@@ -33,14 +38,13 @@ class Equipment(db.Model):
     status = db.Column(equipment_status_enum, nullable=False)
     category = db.relationship('Category', backref='equipments')
     responsible = db.relationship('ResponsiblePerson', secondary=equipment_responsible, backref='equipments')
+    photos = db.relationship('EquipmentPhoto', secondary=equipment_photos_association, backref='equipments')
 
 class EquipmentPhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String, nullable=False)
     mime_type = db.Column(db.String, nullable=False)
-    md5_hash = db.Column(db.String, nullable=False)
-    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id'), nullable=False)
-    equipment = db.relationship('Equipment', backref='photos')
+    md5_hash = db.Column(db.String, unique=True, nullable=False)
 
 class MaintenanceHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)

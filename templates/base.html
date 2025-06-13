@@ -10,7 +10,7 @@
         <ul>
             <li><a href="{{ url_for('index') }}">Главная</a></li>
             {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('equipment_list_view') }}">Оборудование</a></li>
+                <li><a href="{{ url_for('index') }}">Оборудование</a></li>
                 {% if current_user.role in ['admin', 'tech'] %}
                     <li><a href="{{ url_for('maintenance_list') }}">Обслуживание</a></li>
                 {% endif %}
