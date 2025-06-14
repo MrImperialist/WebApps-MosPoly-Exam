@@ -5,6 +5,7 @@
 {% if current_user.is_authenticated and current_user.role == 'admin' %}
 <div class="actions-bar">
     <a href="{{ url_for('add_equipment') }}" class="btn btn-primary">Добавить оборудование</a>
+    <a href="{{ url_for('export_csv') }}" class="btn">Экспорт в CSV</a>
 </div>
 {% endif %}
 <form method="get" class="filters">
@@ -32,7 +33,19 @@
             <th>Инвентарный номер</th>
             <th>Категория</th>
             <th>
-                <a href="{{ url_for('index', sort='purchase_date', order='asc' if request.args.get('order') == 'desc' else 'desc', **request.args.to_dict(flat=True)) }}">Дата покупки</a>
+                {% set args = request.args.to_dict(flat=True) %}
+                {% set current_sort = request.args.get('sort', 'purchase_date') %}
+                {% set current_order = request.args.get('order', 'desc') %}
+                
+                {% set next_order = 'asc' if current_order == 'desc' else 'desc' %}
+                {% set order_indicator = '▼' if current_order == 'desc' else '▲' %}
+                
+                {%- do args.pop('sort', None) -%}
+                {%- do args.pop('order', None) -%}
+                
+                <a href="{{ url_for('index', sort='purchase_date', order=next_order, **args) }}">
+                    Дата покупки {{ order_indicator if current_sort == 'purchase_date' else '' }}
+                </a>
             </th>
             <th>Статус</th>
             <th>Действия</th>

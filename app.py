@@ -1,7 +1,9 @@
 import os
+import io
+import csv
 import hashlib
 from functools import wraps
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from flask_wtf import FlaskForm
@@ -9,11 +11,12 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, Selec
 from wtforms.fields import DateField, FileField
 from wtforms.validators import DataRequired, Optional
 from flask_sqlalchemy import SQLAlchemy
-from models import db, Equipment, Category, ResponsiblePerson, EquipmentPhoto, User
+from models import db, Equipment, Category, ResponsiblePerson, EquipmentPhoto, User, MaintenanceHistory
 from flask_migrate import Migrate
 from sqlalchemy.exc import SQLAlchemyError
 
 app = Flask(__name__)
+app.jinja_env.add_extension('jinja2.ext.do')
 app.secret_key = 'devkey'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:wSpkzSsdTTfQIQROZqrdPjt0ZHGbt08D@dpg-d13hqi49c44c739c6h70-a.frankfurt-postgres.render.com/exam_6vhb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -30,10 +33,20 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Для выполнения данного действия необходимо пройти процедуру аутентификации.'
 login_manager.login_message_category = "error"
 
+# --- Декораторы прав доступа ---
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != 'admin':
+            flash('У вас недостаточно прав для выполнения данного действия.', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def tech_or_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role not in ['admin', 'tech']:
             flash('У вас недостаточно прав для выполнения данного действия.', 'error')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
@@ -60,6 +73,12 @@ class EquipmentForm(FlaskForm):
     note = TextAreaField('Примечание', validators=[Optional()])
     photo = FileField('Фотография оборудования', validators=[Optional()])
     submit = SubmitField('Сохранить')
+
+class MaintenanceForm(FlaskForm):
+    date = DateField('Дата обслуживания', format='%Y-%m-%d', validators=[DataRequired()])
+    maintenance_type = StringField('Тип обслуживания', validators=[DataRequired()])
+    comment = TextAreaField('Комментарий', validators=[DataRequired()])
+    submit = SubmitField('Добавить запись')
 
 
 # --- Маршруты ---
@@ -159,7 +178,7 @@ def manage_equipment(id=None):
 
             db.session.commit()
             
-            flash('Данные об оборудовании успешно сохранены!', 'success')
+            flash('Данные об оборудовании сохранены', 'success')
             return redirect(url_for('view_equipment', id=equipment.id))
 
         except SQLAlchemyError as e:
@@ -178,7 +197,8 @@ def manage_equipment(id=None):
 @login_required
 def view_equipment(id):
     eq = Equipment.query.get_or_404(id)
-    return render_template('view-equipment.html', equipment=eq, current_user=current_user)
+    form = MaintenanceForm()
+    return render_template('view-equipment.html', equipment=eq, current_user=current_user, maintenance_form=form)
 
 
 @app.route('/equipment/<int:id>/delete', methods=['POST'])
@@ -187,6 +207,9 @@ def view_equipment(id):
 def delete_equipment(id):
     eq = Equipment.query.get_or_404(id)
     try:
+        # Удаление связанных записей обслуживания
+        MaintenanceHistory.query.filter_by(equipment_id=id).delete()
+
         for photo in eq.photos:
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], photo.filename)
             if os.path.exists(file_path):
@@ -202,17 +225,43 @@ def delete_equipment(id):
 
     return redirect(url_for('index'))
 
-@app.route('/equipment/<int:equipment_id>/maintenance', methods=['POST'])
+@app.route('/equipment/<int:equipment_id>/maintenance/add', methods=['GET', 'POST'])
 @login_required
+@tech_or_admin_required
 def add_maintenance(equipment_id):
-    flash('Добавление обслуживания пока не реализовано', 'info')
-    return redirect(url_for('view_equipment', id=equipment_id))
+    equipment = Equipment.query.get_or_404(equipment_id)
+    form = MaintenanceForm()
+    
+    if form.validate_on_submit():
+        try:
+            new_record = MaintenanceHistory(
+                equipment_id=equipment.id,
+                date=form.date.data,
+                maintenance_type=form.maintenance_type.data,
+                comment=form.comment.data
+            )
+            db.session.add(new_record)
+            db.session.commit()
+            flash('Запись об обслуживании успешно добавлена.', 'success')
+            return redirect(url_for('view_equipment', id=equipment_id))
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            app.logger.error(f"Database error on adding maintenance: {e}")
+            flash('При добавлении записи возникла ошибка.', 'error')
+
+    return render_template('maintenance-form.html', form=form, equipment=equipment)
+
 
 @app.route('/maintenance')
 @login_required
+@tech_or_admin_required
 def maintenance_list():
-    flash('Список обслуживания пока не реализован', 'info')
-    return redirect(url_for('index'))
+    page = request.args.get('page', 1, type=int)
+    query = MaintenanceHistory.query.order_by(MaintenanceHistory.date.desc())
+    pagination = query.paginate(page=page, per_page=15, error_out=False)
+    records = pagination.items
+    return render_template('maintenance-list.html', records=records, pagination=pagination)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -234,6 +283,39 @@ def logout():
     logout_user()
     flash('Вы вышли из системы', 'info')
     return redirect(url_for('login'))
+
+@app.route('/export/csv')
+@login_required
+@admin_required
+def export_csv():    
+    string_io = io.StringIO()
+    csv_writer = csv.writer(string_io)
+    headers = [
+        'Название', 'Инвентарный номер', 'Категория', 'Дата покупки', 'Статус',
+        'Первоначальная стоимость', 'Накопленная амортизация', 'Текущая стоимость'
+    ]
+    csv_writer.writerow(headers)
+    
+    all_equipment = Equipment.query.all()
+    
+    for item in all_equipment:
+        row = [
+            item.name,
+            item.inventory_number,
+            item.category.name,
+            item.purchase_date.strftime('%Y-%m-%d'),
+            item.status,
+            f"{item.cost:.2f}",
+            f"{item.accumulated_depreciation:.2f}",
+            f"{item.current_value:.2f}"
+        ]
+        csv_writer.writerow(row)
+        
+    output = string_io.getvalue()
+    response = Response(output.encode('utf-8-sig'), mimetype='text/csv')
+    response.headers["Content-Disposition"] = "attachment; filename=equipment_export.csv"
+    
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True)

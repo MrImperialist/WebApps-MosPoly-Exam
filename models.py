@@ -2,6 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy import Numeric
 from flask_login import UserMixin
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 
 db = SQLAlchemy()
 
@@ -39,6 +41,32 @@ class Equipment(db.Model):
     category = db.relationship('Category', backref='equipments')
     responsible = db.relationship('ResponsiblePerson', secondary=equipment_responsible, backref='equipments')
     photos = db.relationship('EquipmentPhoto', secondary=equipment_photos_association, backref='equipments')
+
+    @property
+    def months_in_use(self):
+        today = date.today()
+        # разница в годах * 12 + разница в месяцах
+        return (today.year - self.purchase_date.year) * 12 + today.month - self.purchase_date.month
+
+    @property
+    def accumulated_depreciation(self):
+        USEFUL_LIFE_MONTHS = 60
+        cost = Decimal(self.cost)
+        
+        if self.months_in_use <= 0 or cost == 0:
+            return Decimal('0.00')
+            
+        monthly_depreciation = cost / USEFUL_LIFE_MONTHS
+        total_depreciation = monthly_depreciation * self.months_in_use
+        
+        # Амортизация не может превышать стоимость
+        return min(cost, total_depreciation).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @property
+    def current_value(self):
+        cost = Decimal(self.cost)
+        current_val = cost - self.accumulated_depreciation
+        return current_val.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 class EquipmentPhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)

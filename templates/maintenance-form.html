@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Добавление обслуживания{% endblock %}
+{% block content %}
+<h1>Добавление записи об обслуживании для "{{ equipment.name }}"</h1>
+
+<form method="POST" class="maintenance-add-form">
+    {{ form.hidden_tag() }}
+    
+    <div class="form-group">
+        {{ form.date.label }}
+        {{ form.date(class="form-control" + (" is-invalid" if form.date.errors else "")) }}
+        {% for error in form.date.errors %}
+            <span class="error-feedback">{{ error }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="form-group">
+        {{ form.maintenance_type.label }}
+        {{ form.maintenance_type(class="form-control" + (" is-invalid" if form.maintenance_type.errors else "")) }}
+        {% for error in form.maintenance_type.errors %}
+            <span class="error-feedback">{{ error }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="form-group">
+        {{ form.comment.label }}
+        {{ form.comment(class="form-control" + (" is-invalid" if form.comment.errors else ""), rows=5) }}
+        {% for error in form.comment.errors %}
+            <span class="error-feedback">{{ error }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="form-group">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-control { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+    .error-feedback { color: red; font-size: 0.875em; }
+    .is-invalid { border-color: red; }
+</style>
+{% endblock %}

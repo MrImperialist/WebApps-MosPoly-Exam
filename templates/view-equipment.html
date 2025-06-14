@@ -22,13 +22,48 @@
     <li>Стоимость: {{ equipment.cost }}</li>
     <li>Статус: {{ equipment.status }}</li>
 </ul>
+
+<div class="accounting-info" style="margin-top: 2rem; border-top: 1px solid #ccc; padding-top: 1rem;">
+    <h2>Бухгалтерская информация</h2>
+    <ul>
+        <li>Первоначальная стоимость: {{ "%.2f"|format(equipment.cost) }} руб.</li>
+        <li>Накопленная амортизация: {{ "%.2f"|format(equipment.accumulated_depreciation) }} руб.</li>
+        <li><strong>Текущая балансовая стоимость: {{ "%.2f"|format(equipment.current_value) }} руб.</strong></li>
+    </ul>
+</div>
+
+{% if current_user.is_authenticated and current_user.role in ['admin', 'tech'] %}
+<div class="maintenance-form-container" style="margin-top: 2rem; border-top: 1px solid #ccc; padding-top: 1rem;">
+    <h2>Добавить запись об обслуживании</h2>
+    <form method="POST" action="{{ url_for('add_maintenance', equipment_id=equipment.id) }}">
+        {{ maintenance_form.hidden_tag() }}
+        <div class="form-group">
+            {{ maintenance_form.date.label }}
+            {{ maintenance_form.date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ maintenance_form.maintenance_type.label }}
+            {{ maintenance_form.maintenance_type(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ maintenance_form.comment.label }}
+            {{ maintenance_form.comment(rows=4, class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ maintenance_form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+{% endif %}
+
+
 <h2>История обслуживания</h2>
 <table>
     <thead>
         <tr><th>Дата</th><th>Тип обслуживания</th><th>Комментарий</th></tr>
     </thead>
     <tbody>
-        {% for record in equipment.maintenance_history %}
+        {% for record in equipment.maintenance_history|sort(attribute='date', reverse=True) %}
         <tr>
             <td>{{ record.date }}</td>
             <td>{{ record.maintenance_type }}</td>
